@@ -20,7 +20,7 @@
     </div>
     <% if(username){ %>
     <div class="d-flex justify-content-end">
-      <label for="logout">Hi <%= username %> </label>
+      <label for="logout">Hi <%= username.email %> </label>
       <form method="POST" action="/logout" name="logout">
         <button type="submit" class="btn btn-primary">Logout</button>
       </form>

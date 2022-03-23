@@ -3,6 +3,19 @@ const cookieParser = require("cookie-parser");
 const app = express(); // instantiate an express object for us to use
 const PORT = 8080; // default port 8080
 
+const users = {
+  userRandomID: {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur",
+  },
+  user2RandomID: {
+    id: "user2RandomID", //lookup this
+    email: "user2@example.com",
+    password: "dishwasher-funk",
+  },
+};
+
 const bodyParser = require("body-parser");
 
 app.use(cookieParser());
@@ -47,23 +60,27 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
+  const user = req.cookies["user_id"];
   const templateVars = {
-    username: req.cookies["username"],
+    username: users[user],
     urls: urlDatabase,
   };
+
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
+  const user = req.cookies["user_id"];
   const templateVars = {
-    username: req.cookies["username"],
+    username: users[user],
   };
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  const user = req.cookies["user_id"];
   const templateVars = {
-    username: req.cookies["username"],
+    username: users[user],
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
   };
@@ -114,6 +131,41 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect(`/urls`);
+});
+
+app.get("/register", (req, res) => {
+  const user = req.cookies["user_id"];
+  const templateVars = {
+    username: users[user],
+  };
+  res.render(`urls_newUser`, templateVars);
+});
+
+app.post("/register", (req, res) => {
+  if (!req.body.email || !req.body.password) {
+    res.status(400);
+    res.send("Error 404: Email Address/Password fields cannot be blank");
+  } else {
+    for (let account in users) {
+      if (users[account]["email"] === req.body.email) {
+        res.status(400);
+        res.send("Error 404: Email Address was previously used");
+      }
+    }
+
+    let newID = generateRandomString();
+
+    users[newID] = {
+      id: newID,
+      email: req.body.email,
+      password: req.body.password,
+    };
+
+    console.log(users);
+
+    res.cookie("user_id", newID);
+    res.redirect("/urls");
+  }
 });
