@@ -124,15 +124,25 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const username = req.body.username;
-  console.log(username);
-  res.cookie("username", username);
-  res.redirect(`/urls`);
+  for (const account in users) {
+    //handles login success
+    if (
+      users[account]["email"] === req.body.email &&
+      users[account]["password"] === req.body.password
+    ) {
+      const loggedInUserID = users[account]["id"];
+      res.cookie("user_id", loggedInUserID);
+      res.redirect("/urls");
+    }
+  }
+  res.status(403);
+  res.send("Error 403: Email address or Password invalid");
 });
 
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect(`/urls`);
+  console.log(users);
 });
 
 app.get("/register", (req, res) => {
@@ -144,28 +154,42 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
+  let tracker = 0;
   if (!req.body.email || !req.body.password) {
     res.status(400);
     res.send("Error 404: Email Address/Password fields cannot be blank");
+    tracker++;
   } else {
     for (let account in users) {
       if (users[account]["email"] === req.body.email) {
         res.status(400);
         res.send("Error 404: Email Address was previously used");
+        tracker++;
       }
     }
 
-    let newID = generateRandomString();
+    if (tracker) {
+    } else {
+      let newID = generateRandomString();
 
-    users[newID] = {
-      id: newID,
-      email: req.body.email,
-      password: req.body.password,
-    };
+      users[newID] = {
+        id: newID,
+        email: req.body.email,
+        password: req.body.password,
+      };
 
-    console.log(users);
+      console.log(users);
 
-    res.cookie("user_id", newID);
-    res.redirect("/urls");
+      res.cookie("user_id", newID);
+      res.redirect("/urls");
+    }
   }
+});
+
+app.get("/login", (req, res) => {
+  const user = req.cookies["user_id"];
+  const templateVars = {
+    username: users[user],
+  };
+  res.render(`urls_login`, templateVars);
 });

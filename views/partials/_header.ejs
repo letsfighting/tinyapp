@@ -27,15 +27,11 @@
     </div>
     <% } else{ %>
     <div class="d-flex justify-content-end">
-      <form action="/login" method="POST">
-        <label for="username">Login:</label>
-        <input
-          type="text"
-          name="username"
-          placeholder="Username"
-          class="card-form"
-        />
-        <button type="submit" class="btn btn-primary">Submit</button>
+      <form action="/login" method="GET">
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+      <form action="/register" method="GET">
+        <button type="submit" class="btn btn-primary">Register</button>
       </form>
     </div>
     <% } %>
