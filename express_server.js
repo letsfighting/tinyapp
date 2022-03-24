@@ -35,11 +35,28 @@ function generateRandomString() {
   return result;
 }
 
+const urlsForUser = (id) => {
+  let urlsMatched = {};
+  for (const i in urlDatabase) {
+    if (id === urlDatabase[i]["userID"]) {
+      urlsMatched[i] = urlDatabase[i];
+    }
+  }
+  console.log(urlsMatched);
+  return urlsMatched;
+};
+
 app.set("view engine", "ejs"); //set view engine to EJS
 
 const urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "userRandomID",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "user2RandomID",
+  },
 };
 
 app.get("/", (req, res) => {
@@ -59,58 +76,117 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+//starting here
 app.get("/urls", (req, res) => {
   const user = req.cookies["user_id"];
-  const templateVars = {
-    username: users[user],
-    urls: urlDatabase,
-  };
 
-  res.render("urls_index", templateVars);
+  if (users[user]) {
+    const templateVars = {
+      username: users[user],
+      urls: urlsForUser(users[user]["id"]),
+    };
+
+    res.render("urls_index", templateVars);
+  } else {
+    const templateVars = {
+      username: "",
+      urls: "",
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
 app.get("/urls/new", (req, res) => {
   const user = req.cookies["user_id"];
+
+  if (!user) {
+    res.redirect("/login");
+  }
+
   const templateVars = {
     username: users[user],
   };
   res.render("urls_new", templateVars);
 });
 
-app.get("/urls/:shortURL", (req, res) => {
-  const user = req.cookies["user_id"];
-  const templateVars = {
-    username: users[user],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
-  };
-  res.render("urls_show", templateVars);
-});
-
 app.post("/urls", (req, res) => {
   console.log(req.body); // Log the POST request body to the console
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
 
-  res.redirect(`/urls/${shortURL}`);
+  const user = req.cookies["user_id"];
+
+  if (!user) {
+    res.status(401);
+    res.send("Error 401: Unauthorized");
+  } else {
+    const shortURL = generateRandomString();
+    urlDatabase[shortURL] = {};
+    urlDatabase[shortURL]["longURL"] = req.body.longURL;
+    urlDatabase[shortURL]["userID"] = req.cookies["user_id"];
+    console.log(urlDatabase);
+    res.redirect(`/urls/${shortURL}`);
+  }
+});
+
+app.get("/urls/:shortURL", (req, res) => {
+  const user = req.cookies["user_id"];
+  if (!user) {
+    res.status(401);
+    res.send("Error 401: Unauthorized - Please login first");
+  } else if (urlDatabase[req.params.shortURL]) {
+    if (user === urlDatabase[req.params.shortURL]["userID"]) {
+      const templateVars = {
+        username: users[user],
+        shortURL: req.params.shortURL,
+        longURL: urlDatabase[req.params.shortURL]["longURL"],
+        owner: urlDatabase[req.params.shortURL]["userID"],
+      };
+      console.log(urlDatabase);
+      res.render("urls_show", templateVars);
+    } else {
+      res.status(401);
+      res.send("Error 401: Requested resource does not belong to the user");
+    }
+  } else {
+    res.status(400);
+    res.send("Error 400: Bad Request - shortURL ID invalid");
+  }
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-
-  res.redirect(longURL);
+  if (urlDatabase[req.params.shortURL]) {
+    const longURL = urlDatabase[req.params.shortURL]["longURL"];
+    res.redirect(longURL);
+  } else {
+    res.status(400);
+    res.send("Error 400: Bad Request - shortURL ID invalid");
+  }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  console.log(req.params); // Log the POST request body to the console
-  delete urlDatabase[req.params.shortURL];
+  console.log(req.params); // Log the POST request body to the console in this case it returns the short URL
 
-  res.redirect("/urls");
+  const user = req.cookies["user_id"];
+
+  if (!user) {
+    res.status(401);
+    res.send("Error 401: Unauthorized - Please login first");
+  } else if (urlDatabase[req.params.shortURL]) {
+    if (user === urlDatabase[req.params.shortURL]["userID"]) {
+      delete urlDatabase[req.params.shortURL];
+      res.redirect("/urls");
+    } else {
+      res.status(401);
+      res.send("Error 401: Requested resource does not belong to the user");
+    }
+  } else {
+    res.status(400);
+    res.send("Error 400: Bad Request - shortURL ID invalid");
+  }
 });
 
 app.get("/urls/:shortURL/edit", (req, res) => {
   console.log(req.params); // Log the POST request body to the console
-  const shortURL = [req.params.shortURL];
+  const shortURL = req.params.shortURL;
 
   res.redirect(`/urls/${shortURL}`);
 });
@@ -118,9 +194,17 @@ app.get("/urls/:shortURL/edit", (req, res) => {
 app.post("/urls/:shortURL/edit", (req, res) => {
   console.log(req.params); // Log the POST request body to the console
   const shortURL = [req.params.shortURL];
-  urlDatabase[shortURL] = req.body.longURL;
+  urlDatabase[shortURL]["longURL"] = req.body.longURL;
 
   res.redirect(`/urls/${shortURL}`);
+});
+
+app.get("/login", (req, res) => {
+  const user = req.cookies["user_id"];
+  const templateVars = {
+    username: users[user],
+  };
+  res.render(`urls_login`, templateVars);
 });
 
 app.post("/login", (req, res) => {
@@ -184,12 +268,4 @@ app.post("/register", (req, res) => {
       res.redirect("/urls");
     }
   }
-});
-
-app.get("/login", (req, res) => {
-  const user = req.cookies["user_id"];
-  const templateVars = {
-    username: users[user],
-  };
-  res.render(`urls_login`, templateVars);
 });

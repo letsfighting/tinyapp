@@ -17,7 +17,7 @@
     <title>TinyApp</title>
   </head>
   <body>
-    <%- include('partials/_header') %>
+    <%- include('partials/_header') %> <% if(username){ %>
     <main style="margin: 1em">
       <h3>My URLs</h3>
       <table class="table">
@@ -33,7 +33,7 @@
           <% for(let url in urls) { %>
           <tr>
             <td><%= url %></td>
-            <td><%= urls[url] %></td>
+            <td><%= urls[url]['longURL'] %></td>
             <td>
               <form method="POST" action="/urls/<%= url %>/delete">
                 <button type="delete" class="btn btn-danger">Delete</button>
@@ -49,6 +49,13 @@
         </tbody>
       </table>
     </main>
+
+    <% } else{ %>
+    <div>
+      <h1>Please Login</h1>
+    </div>
+    <% } %>
+
     <!-- Bootstrap JS -->
     <script
       src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
