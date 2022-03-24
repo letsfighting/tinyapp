@@ -107,7 +107,7 @@ app.get("/urls", (req, res) => {
 app.get("/urls/new", (req, res) => {
   const user = req.session.user_id;
 
-  if (!user) {
+  if (!users[user]) {
     res.redirect("/login");
   }
 
@@ -121,8 +121,9 @@ app.post("/urls", (req, res) => {
   console.log(req.body); // Log the POST request body to the console
 
   const user = req.session.user_id;
+  console.log(user);
 
-  if (!user) {
+  if (!users[user]) {
     res.status(401);
     res.send("Error 401: Unauthorized");
   } else {
@@ -137,7 +138,8 @@ app.post("/urls", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
   const user = req.session.user_id;
-  if (!user) {
+
+  if (!users[user]) {
     res.status(401);
     res.send("Error 401: Unauthorized - Please login first");
   } else if (urlDatabase[req.params.shortURL]) {
@@ -175,7 +177,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
   const user = req.session.user_id;
 
-  if (!user) {
+  if (!users[user]) {
     res.status(401);
     res.send("Error 401: Unauthorized - Please login first");
   } else if (urlDatabase[req.params.shortURL]) {
@@ -216,20 +218,24 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  for (const account in users) {
-    //handles login success
+  const userByEmail = getUserByEmail(req.body.email, users);
+  if (userByEmail === "No Matches") {
+    res.status(403);
+    res.send("Error 403: Email address invalid");
+  } else {
     if (
-      users[account]["email"] === req.body.email &&
-      bcrypt.compareSync(req.body.password, users[account]["password"])
+      users[userByEmail]["email"] === req.body.email &&
+      bcrypt.compareSync(req.body.password, users[userByEmail]["password"])
     ) {
-      const loggedInUserID = users[account]["id"];
+      const loggedInUserID = users[userByEmail]["id"];
       req.session.user_id = loggedInUserID;
 
       res.redirect("/urls");
     }
+
+    res.status(403);
+    res.send("Error 403: Password invalid");
   }
-  res.status(403);
-  res.send("Error 403: Email address or Password invalid");
 });
 
 app.post("/logout", (req, res) => {
@@ -247,21 +253,15 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  let tracker = 0;
   if (!req.body.email || !req.body.password) {
     res.status(400);
     res.send("Error 404: Email Address/Password fields cannot be blank");
-    tracker++;
   } else {
-    for (let account in users) {
-      if (users[account]["email"] === req.body.email) {
-        res.status(400);
-        res.send("Error 404: Email Address was previously used");
-        tracker++;
-      }
-    }
+    const userByEmail = getUserByEmail(req.body.email, users);
 
-    if (tracker) {
+    if (userByEmail !== "No Matches") {
+      res.status(400);
+      res.send("Error 404: Email Address was previously used");
     } else {
       let newID = generateRandomString();
       const hashedPassword = bcrypt.hashSync(req.body.password, 10);
