@@ -186,10 +186,15 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 
 app.get("/login", (req, res) => {
   const user = req.session.user_id;
-  const templateVars = {
-    username: users[user],
-  };
-  res.render(`urls_login`, templateVars);
+
+  if (!users[user]) {
+    const templateVars = {
+      username: users[user],
+    };
+    res.render(`urls_login`, templateVars);
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 app.post("/login", (req, res) => {
@@ -221,10 +226,15 @@ app.post("/logout", (req, res) => {
 
 app.get("/register", (req, res) => {
   const user = req.session.user_id;
-  const templateVars = {
-    username: users[user],
-  };
-  res.render(`urls_newUser`, templateVars);
+
+  if (!users[user]) {
+    const templateVars = {
+      username: users[user],
+    };
+    res.render(`urls_newUser`, templateVars);
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 app.post("/register", (req, res) => {
