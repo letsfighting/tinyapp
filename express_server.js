@@ -3,6 +3,11 @@ const cookieSession = require("cookie-session");
 const app = express(); // instantiate an express object for us to use
 const bcrypt = require("bcryptjs");
 const PORT = 8080; // default port 8080
+const {
+  generateRandomString,
+  urlsForUser,
+  getUserByEmail,
+} = require("./helpers");
 
 const users = {};
 
@@ -16,43 +21,6 @@ app.use(
 );
 
 app.use(bodyParser.urlencoded({ extended: true }));
-
-const generateRandomString = () => {
-  let index;
-  let result = "";
-  let characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-  for (let i = 0; i < 6; i++) {
-    index = Math.floor(Math.random() * 63);
-    result += characters.charAt(index);
-  }
-
-  return result;
-};
-
-const urlsForUser = (id) => {
-  let urlsMatched = {};
-  for (const i in urlDatabase) {
-    if (id === urlDatabase[i]["userID"]) {
-      urlsMatched[i] = urlDatabase[i];
-    }
-  }
-  console.log(urlsMatched);
-  return urlsMatched;
-};
-
-const getUserByEmail = (email, database) => {
-  let userByEmail = "No Matches";
-
-  for (const p in database) {
-    if (database[p]["email"] === email) {
-      userByEmail = database[p]["id"];
-    }
-  }
-
-  return userByEmail;
-};
 
 app.set("view engine", "ejs"); //set view engine to EJS
 
@@ -68,7 +36,13 @@ const urlDatabase = {
 };
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  const user = req.session.user_id;
+
+  if (!users[user]) {
+    res.redirect("/login");
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 //start listening to requests on port 8080
@@ -91,7 +65,7 @@ app.get("/urls", (req, res) => {
   if (users[user]) {
     const templateVars = {
       username: users[user],
-      urls: urlsForUser(users[user]["id"]),
+      urls: urlsForUser(users[user]["id"], urlDatabase),
     };
 
     res.render("urls_index", templateVars);
@@ -165,6 +139,7 @@ app.get("/urls/:shortURL", (req, res) => {
 app.get("/u/:shortURL", (req, res) => {
   if (urlDatabase[req.params.shortURL]) {
     const longURL = urlDatabase[req.params.shortURL]["longURL"];
+    console.log(longURL);
     res.redirect(longURL);
   } else {
     res.status(400);
@@ -219,7 +194,7 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   const userByEmail = getUserByEmail(req.body.email, users);
-  if (userByEmail === "No Matches") {
+  if (userByEmail === undefined) {
     res.status(403);
     res.send("Error 403: Email address invalid");
   } else {
@@ -259,7 +234,7 @@ app.post("/register", (req, res) => {
   } else {
     const userByEmail = getUserByEmail(req.body.email, users);
 
-    if (userByEmail !== "No Matches") {
+    if (userByEmail !== undefined) {
       res.status(400);
       res.send("Error 404: Email Address was previously used");
     } else {
